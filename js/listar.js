@@ -45,6 +45,9 @@ async function listarUsuarios() {
                             <button class="btn btn-info btn-sm visualizar-usuario" data-id="${usuario.id}">
                                 <i class="fas fa-eye"></i>
                             </button>
+                            <button class="btn btn-info btn-sm editar-usuario" data-id="${usuario.id}">
+                                <i class="fas fa-pencil"></i>
+                            </button>
                             ${
                                 usuario.id != userIdLogado
                                 ? `<button class="btn btn-danger btn-sm excluir-usuario" data-id="${usuario.id}">
@@ -75,8 +78,22 @@ async function listarUsuarios() {
                         visualizarUsuario(userId);
                     });
                 });
+
+                // Seleciona os elementos com a classe 'atualizar-usuario' 
+                document.querySelectorAll('.atualizar-usuario').forEach(button => {
+                    button.addEventListener('click', function() {
+                        atualizarUsuario(); // Chama a função responsável por atualizar os dados do usuário
+                    });
+                });
+
+                document.querySelectorAll('.editar-usuario').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const userId = this.getAttribute('data-id');
+                        editarUsuario(userId);
+                    });
+                });
             } else {
-                throw new Error('Erro ao buscar os usuários');
+                throw new Error('Erro ao buscar o usuário');
             }
         } else {
             // Redireciona para o login se o token não existir
@@ -126,7 +143,6 @@ function visualizarUsuario(userId) {
     })
     .then(response => response.json())
     .then(data => {        
-        // Preenche os dados do modal
         document.getElementById('usuarioNome').textContent = data.user.name;
         document.getElementById('usuarioEmail').textContent = data.user.email;
 
@@ -141,7 +157,6 @@ function visualizarUsuario(userId) {
             hour12: false
         });
 
-        // Abre o modal de visualização
         const visualizarModal = new bootstrap.Modal(document.getElementById('visualizarUsuarioModal'));
         visualizarModal.show();
     })
@@ -150,5 +165,63 @@ function visualizarUsuario(userId) {
     });
 }
 
+// Implementa a lógica para editar os dados de um usuário específico com base no ID
+function editaUsuario(userId) {
+    const token = localStorage.getItem('token');
+
+    fetch(`http://localhost:8000/api/user/visualizar/${userId}`, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {        
+        document.getElementById('usuarioNomeForm').value = data.user.name;
+        document.getElementById('usuarioEmailForm').value = data.user.email;
+        document.getElementById('usuarioCodigoForm').value = data.user.id;
+        const editarModal = new bootstrap.Modal(document.getElementById('editarUsuarioModal'));
+        editarModal.show();
+    })
+    .catch(error => {
+        console.error('Erro ao editar o usuário:', error);
+    });
+}
+
+ // Implementa a lógica para atualizar os dados de um usuário 
+function atualizaUsuario() {
+    const token = localStorage.getItem('token');
+
+    const userId = document.getElementById('usuarioCodigoForm').value; 
+    const name = document.getElementById('usuarioNomeForm').value; 
+    const email = document.getElementById('usuarioEmailForm').value; 
+    const password = document.getElementById('usuarioSenhaForm').value; 
+    const password_confirmation = document.getElementById('usuarioConfirmaSenhaForm').value; 
+
+    // Faz uma requisição para atualizar os dados do usuário
+    fetch(`http://localhost:8000/api/user/atualizar/${userId}`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({name:name, email:email, password: password, password_confirmation:password_confirmation})
+    })
+    .then(response => response.json())
+    .then(data => { 
+        const mensagemSucesso = document.getElementById('mensagemSucesso');
+        mensagemSucesso.textContent = data.message
+        mensagemSucesso.classList.remove('d-none'); 
+        listarUsuarios(); // Atualiza a lista de usuários após a edição
+    })
+    .catch(error => {
+        console.error('Erro ao editar o usuário referente ao id enviado:', error);
+        const mensagemErro = document.getElementById('mensagemErro');
+        mensagemErro.textContent = 'Erro ao atualizar';
+        mensagemErro.classList.remove('d-none');
+    });
+
+}
 // Chama a função para listar os usuários assim que a página for carregada
 document.addEventListener('DOMContentLoaded', listarUsuarios);
